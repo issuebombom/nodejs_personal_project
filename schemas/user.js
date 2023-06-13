@@ -11,6 +11,16 @@ const userSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
+  grade: {
+    type: String,
+    default: 'common'
+  },
+  posts: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Post'
+    }
+  ],
   refreshToken: {
     type: String,
     default: null
