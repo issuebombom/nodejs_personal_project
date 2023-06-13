@@ -115,32 +115,40 @@ module.exports = mongoose.model('User', userSchema);
 
 ### 라우터 영역
 ```javascript
+// users.router.js
 const express = require('express');
 const usersRouter = express.Router();
 
 const User = require('../schemas/user');
 
+// 유저 조회(API 확인용)
 usersRouter.get('/', async (req, res) => {
   const getUsers = await User.find({});
 
-  res.json({ users: getUsers });
+  res.send({ users: getUsers });
 });
 
+// sign-up
 usersRouter.post('/', async (req, res) => {
   const { userId, password } = req.body;
 
-  const createdUser = await User.create({ userId, password });
+  // 고유값에 대한 검증을 합니다.
+  const findUser = await User.find({ userId });
+  if (findUser.length !== 0) return res.status(400).send({ 'msg': '해당 아이디가 이미 존재합니다.' });
 
+  // 계정 생성
+  await User.create({ userId, password });
   res.send({ msg: '유저 등록 완료' });
 });
 
 module.exports = usersRouter;
 ```
 schema 파일의 마지막 단에서 항상 `module.exports = mongoose.model('User', userSchema);`가 실행되므로 이를 require하면 스키마로 정의한 하나의 모델을 들고 오는 것과 같아진다. 재밌는 점은 (이는 MySQL과도 유사해 보이는데) 모델 생성 시 `User`라고 이름지어서 등록했는데 get, post 등을 요청할 경우 mongoDB에서는 해당 모델을 컬렉션으로 판단하고, 이름을 `users`라는 소문자와 복수형 단어로 변경해서 저장한다는 점이다.  
+또한 mongoDB에는 각 필드별 유니크값을 지니도록 하는 설정이 없어 sign-up 단계에서 중복 방지 검증을 진행한다.
 
 ## 추가 진행 사항
 ### 로그인 기능 구현
-Access Token 생성을 통해 향후 로그인 유저에 대해 포스팅 권한을 부여하는 방식을 구현할 예정
+Access Token 생성을 통해 로그인 유저에 한하여 포스팅 권한을 부여하는 방식을 구현해 보았다.
 ```javascript
 // login.router.js
 const express = require('express');
@@ -153,10 +161,8 @@ loginRouter.post('/', async (req, res) => {
   const user = req.body;
 
   // 데이터베이스에서 유저 정보 조회
-  const findUser = await User.findOne({ userId: user.userId, password: user.password });
-  if (findUser.length == 0) {
-    return res.sendStatus(401);
-  }
+  const findUser = await User.findOne({ userId: user.userId });
+  if (findUser.length == 0) return res.sendStatus(401); // 중복 id
 
   // 토큰 생성
   const accessToken = issuebombomCookie.sign(user,
@@ -173,7 +179,7 @@ loginRouter.post('/', async (req, res) => {
   // refresh token 쿠키로 전달
   res.cookie('issuebombomCookie', refreshToken, {
     httpOnly: true,
-    maxAge: 1 * 60 * 60 * 1000 // 1 시간
+    maxAge: 24 * 60 * 60 * 1000 // 24 시간
   });
 
   res.setHeader('Authorization', `Bearer ${accessToken}`);
@@ -184,6 +190,153 @@ module.exports = loginRouter;
 ```
 로그인을 시도하면 우선 데이터베이스에 해당 정보가 있는지, 즉 회원 여부를 판단한다.  
 이후 회원임이 입증되면 유저 정보와 토큰 생성 키를 기반으로 Access Token 생성하여 유저에게 해더 내 Authorization으로 전달해준다.  
-이를 통해 회원은 게시글 작성 및 조회 시 auth 기반으로 접근 범위를 결정할 수 있다.  
+이를 통해 회원은 게시글 작성 및 조회 시 auth 기반으로 접근 허용 범위를 결정할 수 있다.  
 
-또한 Access Token이 권한 검증에 사용되는 기본적인 토큰이지만 유효 기간을 설정하고, 만료 시 refresh 토큰을 통해 재발급 받는 구조를 구현할 예정이다. 우선은 초기 로그인 시 refresh token도 함께 발급되며 이는 쿠키, 데이터베이스에 저장한다.  
+또한 Access Token이 권한 검증에 사용되는 기본적인 토큰이지만 유효 기간을 설정하고, 만기 시 refresh 토큰을 통해 재발급 받는 구조를 구현할 예정이다.  
+우선은 초기 로그인 시 refresh token도 함께 발급되며 이는 쿠키, 데이터베이스에 저장한다.  
+
+위 예시에는 issuebombomCookie라는 쿠키명에 리프레시 토큰을 담는데 httpOnly 옵션 설정을 통해 자바스크립트 코드로 인한 쿠키 탈취를 방지한다.  
+또한 maxAge는 해당 쿠키의 만기 설정에 해당한다.
+
+### Access Token의 재발급
+```javascript
+// refresh.router.js
+const express = require('express');
+const jwt = require('jsonwebtoken');
+const User = require('../schemas/user');
+
+const refreshRouter = express.Router();
+
+refreshRouter.get('/', async (req, res) => {
+  const cookies = req.cookies;
+  // 쿠키가 없는 경우
+  if (!cookies?.issuebombomCookie) return res.status(403).send({ 'msg': '찾는 쿠키 없음' });
+
+  // 쿠키가 있으면
+  const refreshToken = cookies.issuebombomCookie;
+  // DB에 저장된 쿠키가 있는지 확인
+  const user = User.findOne({ refreshToken });
+  if (user == null) return res.status(403).send({ 'msg': '등록된 리프레시 토큰이 없음' });
+  // 쿠키 검증
+  jwt.verify(refreshToken, process.env.REFRESH_TOKEN_KEY, (err, user) => {
+    // refresh token이 만료된 경우 재로그인 안내
+    if (err) return res.status(403).send({ 'msg': '리프레시 토큰이 만료됨 (재 로그인 필요)' });
+
+    // 신규 토큰 생성
+    const accessToken = jwt.sign({ userId: user.userId, password: user.password }, // 현재 user에는 토큰의 iat와 exp가 담겨있어 제외해야 한다.
+      process.env.ACCESS_TOKEN_KEY,
+      { expiresIn: '1m' }
+    );
+    // 재발급
+    res.setHeader('Authorization', `Bearer ${accessToken}`);
+    res.status(200).send({ msg: '토큰 재발급 완료' });
+  });
+});
+
+module.exports = refreshRouter;
+```
+
+리프레시 토큰은 엑세스 토큰의 재발급을 위한 토큰으로 일반적으로 유효 기간이 엑세스토큰보다 길다. 리프레시 토큰까지 만료된다면 재로그인을 해야한다.  
+리프레시 토큰은 기본적으로 쿠키에 담도록 설정되었는데 이를 확인하기 위해서는 아래와 같이 cookie-parser가 미들웨어에서 동작해야 한다.  
+```javascript
+const cookieParser = require('cookie-parser');
+app.use(cookieParser())
+```
+위 설정이 없다면 req.cookies는 undefined를 출력하게 된다.  
+위 과정에서는 엑세스 토큰이 만료된 시점에서 동작해야할 코드다. 처음에는 찾는 쿠키가 있는지, 그 뒤로는 쿠키에 담긴 리프레시 토큰이 데이터베이스에도 저장되어 있는지 검증한다.  
+로그인 시점에 리프레시 토큰을 유저의 데이터베이스에 저장하므로 당연히 리프레시 토큰으로 find할 경우 해당하는 유저 결과가 하나 나와야 한다.  
+이와 같은 방식으로 우선적으로 리프레시 토큰을 검증하고, 2단계로 jwt.verify로 검증한다. 이상이 없다면 토큰을 재발급한다.
+
+### 회원 전용 게시글 작성
+```javascript
+postsRouter.get('/', authMiddleware, async (req, res) => {
+  // 유저의 _id를 가져와서 post에 입력해야 한다.
+  const { userId, password } = req.user;
+  const user = await User.findOne({ userId, password }).populate('posts'); // 해당 유저의 포스트를 가져온다.
+  res.send(user.posts);
+});
+
+postsRouter.post('/', authMiddleware, async (req, res) => {
+  const { userId, password } = req.user;
+  const findUser = await User.findOne({ userId, password });
+  const { title, postPassword, content } = req.body;
+  const createdPost = await Post.create({ title, postPassword, content, user: findUser._id });
+
+  // 유저 정보에 유저가 올린 포스팅 정보를 담는다.
+  const update = { $push: { posts: createdPost._id } };
+  await User.updateOne({ _id: findUser._id }, update);
+  res.json({ msg: '포스팅 완료' });
+});
+
+function authMiddleware(req, res, next) {
+  // auth에서 access token을 획득합니다.
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer 제거
+  if (token == null) return res.status(401).send({ 'msg': '엑세스 토큰을 입력해 주세요.' }); // 토큰이 없다면 종료
+
+  // access token 검증
+  jwt.verify(token, process.env.ACCESS_TOKEN_KEY, (err, user) => {
+    // access token이 만료된 경우 재생성하기
+    if (err) return res.status(403).send({ 'msg': '엑세스 토큰이 만료되었습니다.'})
+    req.user = user;
+    next();
+  });
+};
+```
+
+authMiddleware를 통해 Post(게시글)를 등록하기 위해서는 로그인 시 발급 받았던 엑세스 토큰의 소유 유무를 확인한다. 즉 가입 회원만이 이용이 가능하도록 설정했다.  
+위 코드에서는 `req.headers.authorization`를 통해 헤더의 authorization으로 토큰을 받을 것을 가정하고 있다. 이를 통해 소유 유무 및 유효 기간 만료 검증을 한다.  
+검증 이후 포스팅이 가능하도록 구현했지만 프론트의 상황에 따라 바뀔 수 있다. 작성하기 버튼을 클릭하는 단계에서 검증을 완료하면 작성 페이지로 이동하고, 이후 특별한 검증 없이 게시글 작성이 가능하도록 해도 된다.  
+또한 게시글 조회에 해당하는 get 메서드에서도 미들웨어를 통한 검증을 거치고 있는데, 이는 자신이 작성한 게시글만 볼 수 있도록 하는 형태를 가정하여 구현했다. 하지만 향후 코멘트 기능을 고려한 API도 구현할 예정이므로 게시글 조회는 공개로 변경될 예정이다.  
+
+### mongoDB 스키마의 ref 기능과 populate 메소드
+```javascript
+const postSchema = new mongoose.Schema({
+  title: {
+    type: String,
+    required: true
+  },
+  postPassword: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  content: {
+    type: String,
+    required: true,
+  },
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+})
+```
+위 모델과 같이 포스팅 데이터 스키마를 정의했다고 가정하자. user 필드에서는 mongoDB에서 사용하는 objectId 타입을 데이터로 받고, User 컬렉션을 참조(ref)한다고 명시되어 있다.  
+이와 같이 작성하면 게시글 조회 시 해당 게시글을 작성한 유저의 정보를 연계해서 한꺼번에 받을 수 있게 된다.  
+post 메서드로 최초 게시글 업로드 시 user 란에 작성자의 id를 기입하면 된다. 그러면 아래 코드와 같이 게시글 데이터 및 작성자 데이터도 한꺼번에 조회할 수 있게 된다.
+
+```javascript
+const post = await Post.findOne({ title }).populate('user');
+res.send(post.user); // 해당 포스터를 작성한 유저 정보도 가져올 수 있게 된다.
+
+>>
+{
+  "_id": "64884455b39c90748b5256eb",
+  "userId": "ball",
+  "password": "1234",
+  "grade": "common",
+  "posts": [
+      "6488466045015406a1c93331"
+  ],
+  "refreshToken": "eyJhbG...",
+  "createdAt": "2023-06-13T10:26:29.675Z",
+  "updatedAt": "2023-06-13T10:26:29.676Z",
+  "__v": 0
+}
+```
+
+위 코드를 보면 특정 타이틀을 지닌 포스터를 조회했지만 populate 메서드를 통해 작성자의 정보도 한꺼번에 들고 올 수 있게 되었다. 
+
+### 정리
+테스트 단계에서 access token을 쿠키 또는 기타 영역에 저장하는 코드를 구현하지 않아서 이 부분의 구현이 필요하다.  
+향후 게시글 수정 및 삭제 기능 구현 및 댓글도 CRUD 모두 구현할 예정이다. 수정 및 삭제 시 사전에 지정한 패스워드를 검증하는 방식으로 구현하기도 하겠지만 로그인 인증 기능이 구현되어 있으므로 본인이 작성한 컨텐츠에 대해서만 수정 및 작성이 가능하도록 구현해볼 예정이다.
