@@ -1,10 +1,6 @@
 const mongoose = require('mongoose');
 
-const postSchema = new mongoose.Schema({
-  title: {
-    type: String,
-    required: true
-  },
+const commentSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true,
@@ -18,12 +14,10 @@ const postSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
-  comments: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Comment'
-    }
-  ],
+  post: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Post'
+  },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -34,4 +28,4 @@ const postSchema = new mongoose.Schema({
   }
 });
 
-module.exports = mongoose.model('Post', postSchema);
+module.exports = mongoose.model('Comment', commentSchema);

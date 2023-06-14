@@ -21,6 +21,12 @@ const userSchema = new mongoose.Schema({
       ref: 'Post'
     }
   ],
+  comments: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Comment'
+    }
+  ],
   refreshToken: {
     type: String,
     default: null
