@@ -6,6 +6,7 @@ const User = require('../schemas/user');
 // 전체 포스트 확인(공개)
 postsRouter.get('/', async (req, res) => {
   const getPosts = await Post.find({});
+  if (getPosts.length === 0) return res.send({ 'msg': '존재하는 게시글이 없습니다.' });
   res.send({ posts: getPosts });
 });
 
