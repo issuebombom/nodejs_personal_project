@@ -12,9 +12,6 @@ postsRouter.use(cookieParser());
 // 전체 포스트 확인(공개)
 postsRouter.get('/', postsController.getPosts);
 
-// // 유저별 포스트 확인(공개)
-// postsRouter.get('/:userId', postsController.getPostsByUserId);
-
 // 포스트 작성
 postsRouter.post('/',
   authMiddleware,
