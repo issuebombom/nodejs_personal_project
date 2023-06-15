@@ -4,6 +4,9 @@ const commentSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true,
+    match: /^[a-zA-Z0-9!@#$%^&*()]+$/,
+    minlength: 4,
+    maxlength: 20,
     trim: true,
   },
   content: {

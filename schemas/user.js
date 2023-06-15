@@ -4,16 +4,23 @@ const userSchema = new mongoose.Schema({
   username: {
     type: String,
     required: true,
+    match: /^[a-zA-Z0-9]+$/,
+    minlength: 5,
+    maxlength: 40,
     trim: true,
   },
   password: {
     type: String,
     required: true,
+    match: /^[a-zA-Z0-9!@#$%^&*()]+$/,
+    minlength: 8,
+    maxlength: 20,
     trim: true,
   },
-  grade: {
+  role: {
     type: String,
-    default: 'common',
+    enum: ['admin', 'user', 'guest'],
+    default: 'guest',
   },
   posts: [
     {

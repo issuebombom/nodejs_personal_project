@@ -55,7 +55,7 @@ const signUp = async (req, res) => {
     if (findUser) return res.status(400).send({ msg: '해당 아이디가 이미 존재합니다.' });
 
     // 계정 생성
-    await User.create({ username, password });
+    await User.create({ username, password, role: 'user' });
     res.send({ msg: '유저 등록 완료' });
   } catch (err) {
     console.error(err.name, ':', err.message);
