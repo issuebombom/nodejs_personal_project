@@ -351,9 +351,9 @@ res.send(post.user); // 해당 포스터를 작성한 유저 정보도 가져올
 >>
 {
   "_id": "64884455b39c90748b5256eb",
-  "userId": "ball",
+  "username": "ball",
   "password": "1234",
-  "grade": "common",
+  "role": "user",
   "posts": [
       "6488466045015406a1c93331"
   ],
@@ -371,7 +371,7 @@ res.send(post.user); // 해당 포스터를 작성한 유저 정보도 가져올
 
 ### mongoDB의 find 사용 시 주의할 점
 
-#### findOne case
+#### case 1
 
 ```javascript
 const user = await User.findOne({ _id });
@@ -389,7 +389,7 @@ await User.updateOne(user, update);
 
 updateOne 메서드가 원치 않는 명령을 수행하는 것이다. 이 부분은 의도한 바와 다르기 때문에 해결하기 위해서는 반드시 null값에 대응하기 위해서는 `if (!user) return res.send( { 'msg': '데이터 없음'})`과 같은 처리를 통해 방지해야 한다.
 
-#### findById case
+#### case 2
 
 ```javascript
 const user = await User.findById({ _id });
@@ -406,6 +406,29 @@ const age = user.age;
 
 정리하자면 find의 결과가 null이길 바라지 않는 API 에서는 반드시 에러 비슷한 처리를 해줘야 하며, 이를 놓친다면 null값에 대한 프로퍼티를 요청하는 코드가 동작할 경우 에러가 발생할 것이므로 이를 위한 try, catch도 함께 이용하는 것이 좋다.
 
+### Collection Validator 설정
+
+```javascript
+username: {
+    type: String,
+    required: true,
+    match: /^[a-zA-Z0-9]+$/,
+    minlength: 5,
+    maxlength: 40,
+    trim: true,
+  },
+  password: {
+    type: String,
+    required: true,
+    match: /^[a-zA-Z0-9!@#$%^&*()]+$/,
+    minlength: 8,
+    maxlength: 20,
+    trim: true,
+  },
+```
+
+각 필드에 대해서 입력 가능한 문자, 글자수 제한, 필수 입력의 조건을 위 코드와 같이 적용하였다.
+
 ### API Test
 
 ![postman-example](./img/postman_exam.png)
@@ -417,7 +440,6 @@ const age = user.age;
 | /user                                                    | POST       | false        | 회원가입                               | 가입 후 유저 조회를 통해 추가 확인, createdAt/updatedAt 체크              |
 | /user                                                    | GET        | false        | 전체유저조회                           | 스키마 디폴트값 적용 유무 체크                                            |
 | /auth/login                                              | POST       | false        | 로그인                                 | 토큰(Access, Refresh) 발행 유무 확인                                      |
-| /auth/refresh                                            | GET        | true         | 엑세스 토큰 재발행                     | 토큰 재발행 유무 확인                                                     |
 | /posts                                                   | POST       | true         | 포스트 작성(회원전용)                  | 포스트 생성 유무 체크, 유저 정보 내 포스트id 내역 추가                    |
 | /posts                                                   | GET        | false        | 전체 포스트 조회                       | 스키마 디폴트값 적용 유무 체크                                            |
 | /posts/:postId/password-verification                     | POST       | true         | 포스트 수정 전 비밀번호 체크(회원전용) | 비밀번호 일치 유무 체크                                                   |
@@ -429,9 +451,107 @@ const age = user.age;
 | /posts/:postId/comments/:commentId                       | PUT        | true         | 댓글 수정(회원전용)                    | 댓글, 포스트id 존재 유무 체크, 수정 적용 유무 체크, UpdatedAt 체크        |
 | /posts/:postId/comments/:commentId                       | DELETE     | true         | 댓글 삭제(회원전용)                    | 삭제 적용 유무 체크, 유저와 포스트 정보 내 작성한 댓글번호 내역 삭제 체크 |
 
-### 해결해야할 이슈
+### 엑세스 토큰 검증과 리프레시 토큰을 활용한 엑세스 토큰 재발급
 
-1. 리프레시 토큰을 어떻게 연동시킬까?
-2. 리프레시 토큰 저장을 어떻게 할까?
+위 두가지 사항을 미들웨어로 만들었으며, 회원 증명이 필요한 요청에는 이 두가지 미들웨어가 포함된다.  
+위에서도 검증 미들웨어에 대해서 소개헀지만 `varification.js` 파일을 생성하여 아래와 같이 수정되었다.
 
-ref) 리프레시 토큰 만료 시 자동 제거: 리프레시 토큰을 저장할 때, 해당 토큰의 만료 시간을 함께 저장하고 관리합니다. 만료 시간이 지난 리프레시 토큰은 자동으로 컬렉션에서 제거됩니다. 이를 위해 데이터베이스에서 `TTL(Time To Live)` 인덱스를 사용하여 만료 시간 기반의 자동 삭제를 구현할 수 있습니다. TTL 인덱스는 특정 필드의 유효 기간을 설정하고, 해당 기간이 지난 문서를 자동으로 삭제하는 역할을 합니다.
+```javascript
+// 엑세스 토큰 검증을 위한 미들웨어
+function verifyAccessToken(req, res, next) {
+  // auth에서 access token을 획득합니다.
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer 제거
+  if (!token) return res.status(401).send({ msg: '엑세스 토큰을 입력해 주세요.' }); // 토큰이 없다면 종료
+
+  // access token 검증
+  jwt.verify(token, process.env.ACCESS_TOKEN_KEY, (err, user) => {
+    // access token이 만료된 경우 재생성하기
+    if (err) {
+      req.expired = true;
+      console.error(err.name, ':', err.message);
+    }
+    req.user = user;
+    next();
+  });
+}
+```
+
+먼저 엑세스 토큰 발급에 대한 미들웨어이다. 만약 엑세스 토큰이 만료되었거나, 값이 다를 경우 만료된 것으로 인정한다.  
+코드에서 보는 것과 같이 verify 메서드의 결과가 err 즉 검증에 실패한다면 request에 true값을 담아 다음 미들웨어에 전달된다.  
+그리고 나서 다음 미들웨어에서 req.expired가 true값을 가질 경우 실행되고, 그렇지 않을 경우 생략된다.
+
+```javascript
+// 엑세스 토큰 만료 시 재발급을 위한 미들웨어
+async function replaceAccessToken(req, res, next) {
+  if (req.expired) {
+    try {
+      const cookies = req.cookies;
+      // 쿠키가 없는 경우
+      if (!cookies?.issuebombomCookie)
+        return res.status(403).send({ msg: '엑세스 토큰 재발급을 위한 쿠키 없음' });
+
+      // 쿠키가 있으면
+      const refreshToken = cookies.issuebombomCookie;
+      // DB에 저장된 쿠키가 있는지 확인
+      const user = await User.findOne({ refreshToken });
+      if (!user) return res.status(403).send({ msg: '해당 쿠키에는 등록된 리프레시 토큰이 없음' });
+      // 쿠키 검증
+      jwt.verify(refreshToken, process.env.REFRESH_TOKEN_KEY, (err, user) => {
+        // refresh token이 만료된 경우 재로그인 안내
+        if (err) return res.status(403).send({ msg: '리프레시 토큰이 만료됨 (재 로그인 필요)' });
+
+        // 신규 토큰 생성
+        const accessToken = jwt.sign(
+          { username: user.username, _id: user._id }, // 현재 user에는 토큰의 iat와 exp가 담겨있어 제외해야 한다.
+          process.env.ACCESS_TOKEN_KEY,
+          { expiresIn: '30m' }
+        );
+        // 재발급
+        res.setHeader('Authorization', `Bearer ${accessToken}`);
+        res.status(200).send({ msg: '엑세스 토큰이 만료되어 재발급' });
+      });
+    } catch (err) {
+      console.error(err.name, ':', err.message);
+      return res.status(500).send({ msg: `${err.message}` });
+    }
+  } else {
+    next();
+  }
+}
+```
+
+위 과정은 엑세스 토큰 재발급 과정이다. 이전 미들웨어에서 req.expired에 true값을 받는다면 엑세스 토큰이 만료된 것으로 간주하고 재발급을 시도한다.  
+이 과정에서 쿠키에 저장된 리프레시 토큰을 요청하여, 쿠키가 없거나, 값이 다를 경우에 대한 대처를 하고, 이후 리프레시 토큰마저 만료되었다면 재 로그인 요청 메시지를 남기고 종료된다.  
+재발급이 완료되면 headers의 authorization으로 엑세스 토큰을 보내준다.
+
+현재 엑세스 토큰을 어디에 어떤 수단으로 저장할지에 대해서는 결정하지 못했다. 해당 토큰을 리프레시와 동일하게 쿠키에 저장시킬 수도 있겠지만 프론트 단에서 private 변수로 저장하는 것을 택하는 방법이 있다고 하여 이 부분에 대한 구현은 생략했다.
+
+### 토큰 발급 시 변수에 남기지 않는 클로징 기법
+
+```javascript
+// 엑세스 토큰 생성기
+const getAccessToken = ((username, _id) => {
+  const accessToken = jwt.sign({ username, _id }, process.env.ACCESS_TOKEN_KEY, {
+    expiresIn: '30m',
+  });
+  return () => accessToken;
+})();
+
+getAccessToken();
+```
+
+토큰 생성 방법에 클로저 기법을 적용했다. 이렇게 하면 생성된 토큰값이 저장된 accessToken 변수에 접근이 불가해진다. 그러므로 중간에 가로챌 수 있는 여지를 제거한다.  
+라고 생각하고 만들었지만 올바르게 활용한 것인지 아직 확신이 안선다.
+
+```javascript
+res.setHeader('Authorization', `Bearer ${getAccessToken(username, _id)}`);
+```
+
+토큰 생성 함수는 위 코드처럼 생성과 동시에 클라이언트의 Header로 보내진다. 그러므로 자바스크립트 내에서 탈취를 막을 수 있다고 생각한다.
+
+### 리프레시 토큰 저장에 대한 고민
+
+> ref) 리프레시 토큰 만료 시 자동 제거: 리프레시 토큰을 저장할 때, 해당 토큰의 만료 시간을 함께 저장하고 관리합니다. 만료 시간이 지난 리프레시 토큰은 자동으로 컬렉션에서 제거됩니다. 이를 위해 데이터베이스에서 `TTL(Time To Live)` 인덱스를 사용하여 만료 시간 기반의 자동 삭제를 구현할 수 있습니다. TTL 인덱스는 특정 필드의 유효 기간을 설정하고, 해당 기간이 지난 문서를 자동으로 삭제하는 역할을 합니다.
+
+해당 프로젝트 과정에서 나는 리프레시 토큰을 유저 데이터베이스에 직접 매칭시켜주었다. 이는 로그인을 할 때 마다 자동 갱신할 수 있게 하기 위함이었다. 하지만 일반적이지 않은 방법으로 보였다. 위 예시처럼 토큰 저장용 컬렉션에서 관리하며 Garbage Collector처럼 기한이 다된 토큰을 자동 삭제하는 시스템으로도 운영된다고 한다.
