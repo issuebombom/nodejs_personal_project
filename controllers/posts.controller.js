@@ -4,7 +4,7 @@ const User = require('../schemas/user');
 // 전체 포스트 확인(공개)
 const getPosts = async (req, res) => {
   try {
-    const getPosts = await Post.find({});
+    const getPosts = await Post.find({}).sort({ _id: -1 }); // id 기준 내림차순정렬
 
     if (getPosts.length === 0) return res.send({ msg: '존재하는 게시글이 없습니다.' });
     res.send({ posts: getPosts });

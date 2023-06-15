@@ -11,6 +11,7 @@ const getComments = async (req, res) => {
     const post = await Post.findById(postId).populate({
       path: 'comments',
       populate: { path: 'user', model: 'User' }, // 유저 패스워드 노출에 대한 조치 필요
+      options: { sort: { _id: -1 } }, // 코멘트 id 기준으로 내림차순 정렬
     });
 
     if (!post) return res.send({ msg: '존재하는 댓글이 없습니다.' });
