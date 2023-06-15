@@ -2,18 +2,18 @@ const jwt = require('jsonwebtoken');
 const User = require('../schemas/user');
 
 const login = async (req, res) => {
-  const { userId } = req.body;
+  const { username } = req.body;
 
   try {
     // 데이터베이스에서 유저 정보 조회
-    const findUser = await User.findOne({ userId });
+    const findUser = await User.findOne({ username });
     if (!findUser) return res.status(401).send({ msg: '회원이 아닙니다.' });
 
     // 토큰 생성
-    const accessToken = jwt.sign({ userId, _id: findUser._id }, process.env.ACCESS_TOKEN_KEY, {
+    const accessToken = jwt.sign({ username, _id: findUser._id }, process.env.ACCESS_TOKEN_KEY, {
       expiresIn: '30m',
     });
-    const refreshToken = jwt.sign({ userId, _id: findUser._id }, process.env.REFRESH_TOKEN_KEY, {
+    const refreshToken = jwt.sign({ username, _id: findUser._id }, process.env.REFRESH_TOKEN_KEY, {
       expiresIn: '1d',
     });
 
@@ -54,7 +54,7 @@ const refresh = async (req, res) => {
 
       // 신규 토큰 생성
       const accessToken = jwt.sign(
-        { userId: user.userId, _id: user._id }, // 현재 user에는 토큰의 iat와 exp가 담겨있어 제외해야 한다.
+        { username: user.username, _id: user._id }, // 현재 user에는 토큰의 iat와 exp가 담겨있어 제외해야 한다.
         process.env.ACCESS_TOKEN_KEY,
         { expiresIn: '30m' }
       );
