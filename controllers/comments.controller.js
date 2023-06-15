@@ -5,7 +5,6 @@ const Comment = require('../schemas/comment');
 // 포스트 댓글 확인(공개)
 const getComments = async (req, res) => {
   const postId = req.params.postId;
-  console.log(postId);
 
   // 해당 포스트의 댓글과 각 댓글의 유저 정보 가져오기
   try {
@@ -14,7 +13,7 @@ const getComments = async (req, res) => {
       populate: { path: 'user', model: 'User' }, // 유저 패스워드 노출에 대한 조치 필요
     });
 
-    if (post.comments.length === 0) return res.send({ msg: '존재하는 댓글이 없습니다.' });
+    if (!post) return res.send({ msg: '존재하는 댓글이 없습니다.' });
     res.send({ comments: post.comments });
   } catch (err) {
     console.error(err.name, ':', err.message);
