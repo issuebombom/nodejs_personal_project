@@ -4,7 +4,36 @@
 
 위 프로젝트를 통해 서버용 데이터베이스 환경 구축하고, 이를 토대로 게시글과 관련해서 CRUD를 간단하게 구현해본다.
 
-## 필수 진행 사항
+## 최종 결과
+### Directory Structure
+![example](./img/directory_structure.png)
+
+### API Test
+
+![postman-example](./img/postman_exam.png)
+
+#### 포스트맨 API 체크 Flow
+
+| 경로                                                     | API Method | verify token | Description                            | Check List                                                                     |
+| -------------------------------------------------------- | ---------- | ------------ | -------------------------------------- | ------------------------------------------------------------------------- |
+| /user                                                    | POST       | false        | 회원가입                               | 가입 후 유저 조회를 통해 추가 확인, createdAt/updatedAt 체크              |
+| /user                                                    | GET        | false        | 전체유저조회                           | 스키마 디폴트값 적용 유무 체크                                            |
+| /auth/login                                              | POST       | false        | 로그인                                 | 토큰(Access, Refresh) 발행 유무 확인                                      |
+| /posts                                                   | POST       | true         | 포스트 작성(회원전용)                  | 포스트 생성 유무 체크, 유저 정보 내 포스트id 내역 추가                    |
+| /posts                                                   | GET        | false        | 전체 포스트 조회                       | 스키마 디폴트값 적용 유무 체크                                            |
+| /posts/:postId/password-verification                     | POST       | true         | 포스트 수정 전 비밀번호 체크(회원전용) | 비밀번호 일치 유무 체크                                                   |
+| /posts/:postId                                           | PUT        | true         | 포스트 수정(회원전용)                  | 포스트id 존재 유무 체크, 수정 적용 유무 체크, UpdatedAt 체크              |
+| /posts/:postId                                           | DELETE     | true         | 포스트 삭제(회원전용)                  | 삭제 적용 유무 체크, 유저 정보 내 작성한 포스트번호 내역 삭제 체크        |
+| /posts/:postId/comments                                  | POST       | true         | 포스트 내 댓글 작성(회원전용)          | 댓글 생성 유무 체크, 포스트 데이터와 유저 데이터 내 댓글id 내역 추가      |
+| /posts/:postId/comments                                  | GET        | false        | 포스트 내 댓글 조회                    | 스키마 디폴트값 적용 유무 체크                                            |
+| /posts/:postId/comments/:commentId/password-verification | POST       | true         | 댓글 수정 전 비밀번호 체크(회원전용)   | 비밀번호 일치 유무 체크                                                   |
+| /posts/:postId/comments/:commentId                       | PUT        | true         | 댓글 수정(회원전용)                    | 댓글, 포스트id 존재 유무 체크, 수정 적용 유무 체크, UpdatedAt 체크        |
+| /posts/:postId/comments/:commentId                       | DELETE     | true         | 댓글 삭제(회원전용)                    | 삭제 적용 유무 체크, 유저와 포스트 정보 내 작성한 댓글번호 내역 삭제 체크 |
+
+[상세 API 명세보기](https://ionized-aster-f0c.notion.site/9343a74969704533820ab42c10daa3c9?pvs=4)
+
+
+## 진행 사항
 
 ### MongoDB 생성 및 mongoose 다루기
 
@@ -428,28 +457,6 @@ username: {
 ```
 
 각 필드에 대해서 입력 가능한 문자, 글자수 제한, 필수 입력의 조건을 위 코드와 같이 적용하였다.
-
-### API Test
-
-![postman-example](./img/postman_exam.png)
-
-#### 포스트맨 API 체크 Flow
-
-| 경로                                                     | API Method | verify token | Description                            | Check                                                                     |
-| -------------------------------------------------------- | ---------- | ------------ | -------------------------------------- | ------------------------------------------------------------------------- |
-| /user                                                    | POST       | false        | 회원가입                               | 가입 후 유저 조회를 통해 추가 확인, createdAt/updatedAt 체크              |
-| /user                                                    | GET        | false        | 전체유저조회                           | 스키마 디폴트값 적용 유무 체크                                            |
-| /auth/login                                              | POST       | false        | 로그인                                 | 토큰(Access, Refresh) 발행 유무 확인                                      |
-| /posts                                                   | POST       | true         | 포스트 작성(회원전용)                  | 포스트 생성 유무 체크, 유저 정보 내 포스트id 내역 추가                    |
-| /posts                                                   | GET        | false        | 전체 포스트 조회                       | 스키마 디폴트값 적용 유무 체크                                            |
-| /posts/:postId/password-verification                     | POST       | true         | 포스트 수정 전 비밀번호 체크(회원전용) | 비밀번호 일치 유무 체크                                                   |
-| /posts/:postId                                           | PUT        | true         | 포스트 수정(회원전용)                  | 포스트id 존재 유무 체크, 수정 적용 유무 체크, UpdatedAt 체크              |
-| /posts/:postId                                           | DELETE     | true         | 포스트 삭제(회원전용)                  | 삭제 적용 유무 체크, 유저 정보 내 작성한 포스트번호 내역 삭제 체크        |
-| /posts/:postId/comments                                  | POST       | true         | 포스트 내 댓글 작성(회원전용)          | 댓글 생성 유무 체크, 포스트 데이터와 유저 데이터 내 댓글id 내역 추가      |
-| /posts/:postId/comments                                  | GET        | false        | 포스트 내 댓글 조회                    | 스키마 디폴트값 적용 유무 체크                                            |
-| /posts/:postId/comments/:commentId/password-verification | POST       | true         | 댓글 수정 전 비밀번호 체크(회원전용)   | 비밀번호 일치 유무 체크                                                   |
-| /posts/:postId/comments/:commentId                       | PUT        | true         | 댓글 수정(회원전용)                    | 댓글, 포스트id 존재 유무 체크, 수정 적용 유무 체크, UpdatedAt 체크        |
-| /posts/:postId/comments/:commentId                       | DELETE     | true         | 댓글 삭제(회원전용)                    | 삭제 적용 유무 체크, 유저와 포스트 정보 내 작성한 댓글번호 내역 삭제 체크 |
 
 ### 엑세스 토큰 검증과 리프레시 토큰을 활용한 엑세스 토큰 재발급
 
