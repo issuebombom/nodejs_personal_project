@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const postSchema = new mongoose.Schema({
   title: {
     type: String,
-    required: true
+    required: true,
   },
   password: {
     type: String,
@@ -16,13 +16,13 @@ const postSchema = new mongoose.Schema({
   },
   user: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+    ref: 'User',
   },
   comments: [
     {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Comment'
-    }
+      ref: 'Comment',
+    },
   ],
   createdAt: {
     type: Date,
@@ -31,7 +31,7 @@ const postSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now,
-  }
+  },
 });
 
 module.exports = mongoose.model('Post', postSchema);

@@ -13,3 +13,4 @@ venv.bak/
 # etc.
 .vscode
 .DS_Store
+test.js

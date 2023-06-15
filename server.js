@@ -1,7 +1,7 @@
 require('dotenv').config();
-// const path = require('path');
 const cookieParser = require('cookie-parser');
 const express = require('express');
+// const path = require('path');
 
 const HOST = '0.0.0.0';
 const PORT = 3000;
@@ -14,8 +14,7 @@ const usersRouter = require('./routes/users.router');
 const authorizationRouter = require('./routes/authorization.router');
 const postsRouter = require('./routes/posts.router');
 
-const connect = require('./schemas');
-connect();
+require('./ schemas'); // moongoDB connect
 
 app.use(express.json());
 app.use(cookieParser()); // npm i cookie-parser

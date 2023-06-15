@@ -2,7 +2,6 @@ const Post = require('../schemas/post');
 const User = require('../schemas/user');
 const Comment = require('../schemas/comment');
 
-
 // 포스트 댓글 확인(공개)
 const getComments = async (req, res) => {
   const postId = req.params.postId;
@@ -10,19 +9,16 @@ const getComments = async (req, res) => {
 
   // 해당 포스트의 댓글과 각 댓글의 유저 정보 가져오기
   try {
-    const post = await Post
-      .findById(postId)
-      .populate({
-        path: 'comments',
-        populate: { path: 'user', model: 'User' } // 유저 패스워드 노출에 대한 조치 필요
-      });
+    const post = await Post.findById(postId).populate({
+      path: 'comments',
+      populate: { path: 'user', model: 'User' }, // 유저 패스워드 노출에 대한 조치 필요
+    });
 
-    if (post.comments.length === 0) return res.send({ 'msg': '존재하는 댓글이 없습니다.' });
+    if (post.comments.length === 0) return res.send({ msg: '존재하는 댓글이 없습니다.' });
     res.send({ comments: post.comments });
-
   } catch (err) {
     console.error(err.name, ':', err.message);
-    return res.status(500).send({ 'msg': `${err.message}` });
+    return res.status(500).send({ msg: `${err.message}` });
   }
 };
 
@@ -36,19 +32,23 @@ const writeComments = async (req, res) => {
     const findPost = await Post.findById(postId);
     const { password, content } = req.body;
 
-    if (!findUser || !findPost) return res.send({ 'msg': `데이터를 찾지 못했습니다.` });
+    if (!findUser || !findPost) return res.send({ msg: `데이터를 찾지 못했습니다.` });
 
-    const createdComment = await Comment.create({ password, content, user: findUser._id, post: postId });
+    const createdComment = await Comment.create({
+      password,
+      content,
+      user: findUser._id,
+      post: postId,
+    });
 
     // 유저 컬렉션과 포스트 컬렉션에 댓글 id 등록하기
     const update = { $push: { comments: createdComment._id } };
     await User.updateOne(findUser, update);
     await Post.updateOne(findPost, update);
     res.json({ msg: '댓글 작성 완료' });
-
   } catch (err) {
     console.error(err.name, ':', err.message);
-    return res.status(500).send({ 'msg': `${err.message}` });
+    return res.status(500).send({ msg: `${err.message}` });
   }
 };
 
@@ -62,15 +62,15 @@ const passwordVerificationForComments = async (req, res) => {
     const findPost = await Post.findById(postId);
     const findComment = await Comment.findById(commentId);
 
-    if (!findPost || !findComment) return res.send({ 'msg': `데이터를 찾지 못했습니다.` });
+    if (!findPost || !findComment) return res.send({ msg: `데이터를 찾지 못했습니다.` });
 
     // 패스워드 일치 유무 확인
-    if (password !== findComment.password) return res.status(403).send({ 'msg': '비밀번호가 일치하지 않습니다.' });
+    if (password !== findComment.password)
+      return res.status(403).send({ msg: '비밀번호가 일치하지 않습니다.' });
     res.send(findComment); // NOTE: 추후 삭제, 수정 기능과 연결 고려한 res 수정 필요
-
   } catch (err) {
     console.error(err.name, ':', err.message);
-    return res.status(500).send({ 'msg': `${err.message}` });
+    return res.status(500).send({ msg: `${err.message}` });
   }
 };
 
@@ -82,16 +82,15 @@ const editComments = async (req, res) => {
   try {
     const findComment = await Comment.findById(commentId);
 
-    if (!findComment) return res.send({ 'msg': `데이터를 찾지 못했습니다.` });
+    if (!findComment) return res.send({ msg: `데이터를 찾지 못했습니다.` });
 
     // 수정일자 업데이트
-    const update = { '$set': { password, content, updatedAt: Date.now() } };
+    const update = { $set: { password, content, updatedAt: Date.now() } };
     await Comment.updateOne(findComment, update);
-    res.status(200).send({ 'msg': '댓글 수정 완료' });
-
+    res.status(200).send({ msg: '댓글 수정 완료' });
   } catch (err) {
     console.error(err.name, ':', err.message);
-    return res.status(500).send({ 'msg': `${err.message}` });
+    return res.status(500).send({ msg: `${err.message}` });
   }
 };
 
@@ -105,23 +104,23 @@ const deleteComments = async (req, res) => {
     const findPost = await Post.findById(postId);
     const findComment = await Comment.findById(commentId);
 
-    if (!findUser || !findPost || !findComment) return res.send({ 'msg': `데이터를 찾지 못했습니다.` });
+    if (!findUser || !findPost || !findComment)
+      return res.send({ msg: `데이터를 찾지 못했습니다.` });
 
     // 유저 및 포스트 데이터에서 해당 댓글 id 제거 및 updatedAt 최신화
     const update = {
-      '$pull': { comments: commentId },
-      '$set': { updatedAt: Date.now() },
+      $pull: { comments: commentId },
+      $set: { updatedAt: Date.now() },
     };
     await Post.updateOne(findPost, update);
     await User.updateOne(findUser, update);
 
     // 댓글 삭제
     await Comment.deleteOne(findComment);
-    res.status(200).send({ 'msg': `댓글 삭제 완료 (${findComment._id})` });
-
+    res.status(200).send({ msg: `댓글 삭제 완료 (${findComment._id})` });
   } catch (err) {
     console.error(err.name, ':', err.message);
-    return res.status(500).send({ 'msg': `${err.message}` });
+    return res.status(500).send({ msg: `${err.message}` });
   }
 };
 
@@ -130,5 +129,5 @@ module.exports = {
   writeComments,
   passwordVerificationForComments,
   editComments,
-  deleteComments
+  deleteComments,
 };

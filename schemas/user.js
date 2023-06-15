@@ -13,23 +13,23 @@ const userSchema = new mongoose.Schema({
   },
   grade: {
     type: String,
-    default: 'common'
+    default: 'common',
   },
   posts: [
     {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Post'
-    }
+      ref: 'Post',
+    },
   ],
   comments: [
     {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Comment'
-    }
+      ref: 'Comment',
+    },
   ],
   refreshToken: {
     type: String,
-    default: null
+    default: null,
   },
   createdAt: {
     type: Date,
@@ -38,7 +38,7 @@ const userSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now,
-  }
+  },
 });
 
 module.exports = mongoose.model('User', userSchema);
