@@ -32,7 +32,7 @@ const writeComments = async (req, res) => {
     const findPost = await Post.findById(postId);
     const { password, content } = req.body;
 
-    if (!findUser || !findPost) return res.send({ msg: `데이터를 찾지 못했습니다.` });
+    if (!findUser || !findPost) return res.send({ msg: '유저정보 또는 게시글이 없습니다.' });
 
     const createdComment = await Comment.create({
       password,
@@ -62,7 +62,7 @@ const passwordVerificationForComments = async (req, res) => {
     const findPost = await Post.findById(postId);
     const findComment = await Comment.findById(commentId);
 
-    if (!findPost || !findComment) return res.send({ msg: `데이터를 찾지 못했습니다.` });
+    if (!findPost || !findComment) return res.send({ msg: '게시글 또는 댓글이 없습니다.' });
 
     // 패스워드 일치 유무 확인
     if (password !== findComment.password)
@@ -82,7 +82,7 @@ const editComments = async (req, res) => {
   try {
     const findComment = await Comment.findById(commentId);
 
-    if (!findComment) return res.send({ msg: `데이터를 찾지 못했습니다.` });
+    if (!findComment) return res.send({ msg: `댓글을 찾지 못했습니다.` });
 
     // 수정일자 업데이트
     const update = { $set: { password, content, updatedAt: Date.now() } };
@@ -105,7 +105,7 @@ const deleteComments = async (req, res) => {
     const findComment = await Comment.findById(commentId);
 
     if (!findUser || !findPost || !findComment)
-      return res.send({ msg: `데이터를 찾지 못했습니다.` });
+      return res.send({ msg: `유저 정보 또는 게시글 또는 댓글 정보를 찾지 못했습니다.` });
 
     // 유저 및 포스트 데이터에서 해당 댓글 id 제거 및 updatedAt 최신화
     const update = {

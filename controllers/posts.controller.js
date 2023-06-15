@@ -22,7 +22,7 @@ const writePosts = async (req, res) => {
     const findUser = await User.findById(_id);
 
     // find 결과가 null일 경우
-    if (!findUser) return res.send({ msg: `데이터를 찾지 못했습니다.` });
+    if (!findUser) return res.send({ msg: '유저 정보가 없습니다.' });
 
     const { title, password, content } = req.body;
     const createdPost = await Post.create({ title, password, content, user: findUser._id });
@@ -46,7 +46,7 @@ const passwordVerificationForPosts = async (req, res) => {
   try {
     const findPost = await Post.findById(postId);
 
-    if (!findPost) return res.send({ msg: `데이터를 찾지 못했습니다.` });
+    if (!findPost) return res.send({ msg: '존재하는 게시글이 없습니다.' });
 
     // 패스워드 일치 유무 확인
     if (password !== findPost.password)
@@ -90,7 +90,7 @@ const deletePosts = async (req, res) => {
     const findPost = await Post.findById(postId);
 
     // find 결과가 null일 경우
-    if (!findUser || !findPost) return res.send({ msg: `데이터를 찾지 못했습니다.` });
+    if (!findUser || !findPost) return res.send({ msg: '유저 정보 또는 게시글이 없습니다.' });
 
     // 유저 데이터에서 해당 포스트 id 제거 및 updatedAt 최신화
     const update = {
