@@ -19,7 +19,7 @@ const getUser = async (req, res) => {
 
   try {
     const findUser = await User.findById(userId);
-    if (findUser.length === 0) return res.send({ msg: `유저 정보가 없습니다.` });
+    if (!findUser) return res.send({ msg: `유저 정보가 없습니다.` });
 
     res.send(findUser);
   } catch (err) {
