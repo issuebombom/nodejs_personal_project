@@ -4,7 +4,6 @@ const User = require('../schemas/user');
 // 전체 포스트 확인(공개)
 const getPosts = async (req, res) => {
   try {
-    // const getPosts = await Post.find({}).sort({ _id: -1 }); // id 기준 내림차순정렬
     const getPosts = await Post.find({})
       .select('-password')
       .populate({
