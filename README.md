@@ -2,13 +2,13 @@
 
 ## 개요
 
-위 프로젝트를 통해 서버용 데이터베이스 환경 구축하고, 이를 토대로 게시글과 관련해서 CRUD를 간단하게 구현해본다.
+위 프로젝트를 통해 서버용 데이터베이스 환경 구축하고, 이를 토대로 게시글과 관련해서 CRUD API를 간단하게 구현합니다.
 
-## 최종 결과
+## 최종 결과 명세
 ### Directory Structure
 ![example](./img/directory_structure.png)
 
-### API Test
+### API Test with POSTMAN
 
 ![postman-example](./img/postman_exam.png)
 
@@ -530,7 +530,13 @@ async function replaceAccessToken(req, res, next) {
 
 위 과정은 엑세스 토큰 재발급 과정이다. 이전 미들웨어에서 req.expired에 true값을 받는다면 엑세스 토큰이 만료된 것으로 간주하고 재발급을 시도한다.  
 이 과정에서 쿠키에 저장된 리프레시 토큰을 요청하여, 쿠키가 없거나, 값이 다를 경우에 대한 대처를 하고, 이후 리프레시 토큰마저 만료되었다면 재 로그인 요청 메시지를 남기고 종료된다.  
-재발급이 완료되면 headers의 authorization으로 엑세스 토큰을 보내준다.
+재발급이 완료되면 headers의 authorization으로 엑세스 토큰을 보내준다.  
+결과적으로 아래와 같이 적용된다.
+
+```javascript
+// 수정페이지에서 '수정하기' 클릭
+postsRouter.put('/:postId', verifyAccessToken, replaceAccessToken, postsController.editPosts);
+```
 
 현재 엑세스 토큰을 어디에 어떤 수단으로 저장할지에 대해서는 결정하지 못했다. 해당 토큰을 리프레시와 동일하게 쿠키에 저장시킬 수도 있겠지만 프론트 단에서 private 변수로 저장하는 것을 택하는 방법이 있다고 하여 이 부분에 대한 구현은 생략했다.
 
@@ -542,14 +548,22 @@ const getAccessToken = ((username, _id) => {
   const accessToken = jwt.sign({ username, _id }, process.env.ACCESS_TOKEN_KEY, {
     expiresIn: '30m',
   });
-  return () => accessToken;
-})();
+  return accessToken
+});
+getAccessToken(username, _id);
 
-getAccessToken();
+// 엑세스 토큰 생성기 (closure)
+const getAccessToken = ((username, _id) => {
+  const accessToken = jwt.sign({ username, _id }, process.env.ACCESS_TOKEN_KEY, {
+    expiresIn: '30m',
+  });
+  return (username, _id) => accessToken(username, _id);
+})();
+getAccessToken(username, _id);
 ```
 
-토큰 생성 방법에 클로저 기법을 적용했다. 이렇게 하면 생성된 토큰값이 저장된 accessToken 변수에 접근이 불가해진다. 그러므로 중간에 가로챌 수 있는 여지를 제거한다.  
-라고 생각하고 만들었지만 올바르게 활용한 것인지 아직 확신이 안선다.
+토큰 생성 방법에 클로저 기법을 적용해 보았다. 이렇게 하면 생성된 토큰값이 저장된 accessToken 변수에 접근이 불가해진다. 그러므로 중간에 가로챌 수 있는 여지를 제거한다.  
+라고 생각하고 만들었지만 그냥 함수로 만드는 것과 별반 차이가 없는 것 같다. 연습 삼아 클로저로 구현해 본 것으로 만족해야 겠다.
 
 ```javascript
 res.setHeader('Authorization', `Bearer ${getAccessToken(username, _id)}`);
