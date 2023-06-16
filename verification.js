@@ -3,18 +3,18 @@ const User = require('./schemas/user');
 
 // 엑세스 토큰 생성기
 const getAccessToken = ((username, _id) => {
-  const accessToken = jwt.sign({ username, _id }, process.env.ACCESS_TOKEN_KEY, {
+  const accessToken = (username, _id) => jwt.sign({ username, _id }, process.env.ACCESS_TOKEN_KEY, {
     expiresIn: '30m',
   });
-  return () => accessToken;
+  return (username, _id) => accessToken(username, _id);
 })();
 
 // 리프레시 토큰 생성기
 const getRefreshToken = ((username, _id) => {
-  const refreshToken = jwt.sign({ username, _id }, process.env.REFRESH_TOKEN_KEY, {
-    expiresIn: '30m',
+  const refreshToken = (username, _id) => jwt.sign({ username, _id }, process.env.REFRESH_TOKEN_KEY, {
+    expiresIn: '1d',
   });
-  return () => refreshToken;
+  return (username, _id) => refreshToken(username, _id);
 })();
 
 // 엑세스 토큰 검증을 위한 미들웨어
