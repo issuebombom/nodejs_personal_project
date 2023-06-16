@@ -19,6 +19,7 @@ postsRouter.post('/', verifyAccessToken, replaceAccessToken, postsController.wri
 postsRouter.post(
   '/:postId/password-verification',
   verifyAccessToken,
+  replaceAccessToken,
   postsController.passwordVerificationForPosts
 );
 
