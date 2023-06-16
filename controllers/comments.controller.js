@@ -10,8 +10,8 @@ const getComments = async (req, res) => {
   try {
     const post = await Post.findById(postId).populate({
       path: 'comments',
-      populate: { path: 'user', model: 'User' }, // 유저 패스워드 노출에 대한 조치 필요
-      options: { sort: { _id: -1 } }, // 코멘트 id 기준으로 내림차순 정렬
+      populate: { path: 'user', model: 'User', select: '-password -refreshToken' }, // 유저 패스워드 노출에 대한 조치 필요
+      options: { sort: { _id: -1 }, select: '-password' }, // 코멘트 id 기준으로 내림차순 정렬
     });
 
     if (!post) return res.send({ msg: '존재하는 댓글이 없습니다.' });
@@ -67,7 +67,7 @@ const passwordVerificationForComments = async (req, res) => {
     // 패스워드 일치 유무 확인
     if (password !== findComment.password)
       return res.status(403).send({ msg: '비밀번호가 일치하지 않습니다.' });
-    res.send(findComment); // NOTE: 추후 삭제, 수정 기능과 연결 고려한 res 수정 필요
+    res.send({ msg: '비밀번호가 확인되었습니다.'}); // NOTE: 추후 삭제, 수정 기능과 연결 고려한 res 수정 필요
   } catch (err) {
     console.error(err.name, ':', err.message);
     return res.status(500).send({ msg: `${err.message}` });

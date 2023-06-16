@@ -3,7 +3,7 @@ const User = require('../schemas/user');
 // 유저 조회(API 확인용)
 const getUsers = async (req, res) => {
   try {
-    const findUsers = await User.find({});
+    const findUsers = await User.find({}).select('-password -refreshToken');
     if (findUsers.length === 0) return res.send({ msg: '유저 정보가 없습니다.' });
 
     res.send(findUsers);

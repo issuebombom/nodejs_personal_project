@@ -4,7 +4,14 @@ const User = require('../schemas/user');
 // 전체 포스트 확인(공개)
 const getPosts = async (req, res) => {
   try {
-    const getPosts = await Post.find({}).sort({ _id: -1 }); // id 기준 내림차순정렬
+    // const getPosts = await Post.find({}).sort({ _id: -1 }); // id 기준 내림차순정렬
+    const getPosts = await Post.find({})
+      .select('-password')
+      .populate({
+        path: 'user',
+        select: '-password -refreshToken',
+      })
+      .sort({ _id: -1 });
 
     if (getPosts.length === 0) return res.send({ msg: '존재하는 게시글이 없습니다.' });
     res.send({ posts: getPosts });
@@ -51,7 +58,7 @@ const passwordVerificationForPosts = async (req, res) => {
     // 패스워드 일치 유무 확인
     if (password !== findPost.password)
       return res.status(403).send({ msg: '비밀번호가 일치하지 않습니다.' });
-    res.send(findPost); // NOTE: 추후 삭제, 수정 기능과 연결 고려한 res 수정 필요
+    res.send({ 'msg': '비밀번호가 확인되었습니다.'}); // NOTE: 추후 삭제, 수정 기능과 연결 고려한 res 수정 필요
   } catch (err) {
     console.error(err.name, ':', err.message);
     return res.status(500).send({ msg: `${err.message}` });
