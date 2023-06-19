@@ -43,27 +43,6 @@ const writePosts = async (req, res) => {
   }
 };
 
-// 내 게시글 수정 클릭 -> 비밀번호 확인 사이트로 이동(href에 게시글 id 전달) -> 비밀번호 검증 -> 수정페이지에서 수정
-// 비밀번호 검증 페이지(쿼리값 필요)
-const passwordVerificationForPosts = async (req, res) => {
-  const postId = req.params.postId;
-  const password = req.body.password; // form 태그에서 받음
-
-  try {
-    const findPost = await Post.findById(postId);
-
-    if (!findPost) return res.send({ msg: '존재하는 게시글이 없습니다.' });
-
-    // 패스워드 일치 유무 확인
-    if (password !== findPost.password)
-      return res.status(403).send({ msg: '비밀번호가 일치하지 않습니다.' });
-    res.send({ 'msg': '비밀번호가 확인되었습니다.'}); // NOTE: 추후 삭제, 수정 기능과 연결 고려한 res 수정 필요
-  } catch (err) {
-    console.error(err.name, ':', err.message);
-    return res.status(500).send({ msg: `${err.message}` });
-  }
-};
-
 // 수정페이지에서 수정완료(올리기) 클릭
 const editPosts = async (req, res) => {
   const postId = req.params.postId;
@@ -117,9 +96,7 @@ const deletePosts = async (req, res) => {
 
 module.exports = {
   getPosts,
-  // getPostsByUserId,
   writePosts,
-  passwordVerificationForPosts,
   editPosts,
   deletePosts,
 };

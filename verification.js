@@ -1,19 +1,22 @@
 const jwt = require('jsonwebtoken');
 const User = require('./schemas/user');
+const Post = require('./schemas/post');
 
 // 엑세스 토큰 생성기
 const getAccessToken = ((username, _id) => {
-  const accessToken = (username, _id) => jwt.sign({ username, _id }, process.env.ACCESS_TOKEN_KEY, {
-    expiresIn: '30m',
-  });
+  const accessToken = (username, _id) =>
+    jwt.sign({ username, _id }, process.env.ACCESS_TOKEN_KEY, {
+      expiresIn: '30m',
+    });
   return (username, _id) => accessToken(username, _id);
 })();
 
 // 리프레시 토큰 생성기
 const getRefreshToken = ((username, _id) => {
-  const refreshToken = (username, _id) => jwt.sign({ username, _id }, process.env.REFRESH_TOKEN_KEY, {
-    expiresIn: '1d',
-  });
+  const refreshToken = (username, _id) =>
+    jwt.sign({ username, _id }, process.env.REFRESH_TOKEN_KEY, {
+      expiresIn: '1d',
+    });
   return (username, _id) => refreshToken(username, _id);
 })();
 
@@ -68,9 +71,35 @@ async function replaceAccessToken(req, res, next) {
   }
 }
 
+// 게시글 수정 권한 검증을 위한 미들웨어
+async function verificationForPosts(req, res, next) {
+  const postId = req.params.postId;
+  const password = req.body.password; // form 태그에서 받음
+  const userId = req.user._id; // 미들웨어 토큰에서 가져온 정보
+
+  try {
+    const findPost = await Post.findById(postId);
+    const findUser = await User.findById(userId);
+
+    if (!findPost) return res.status(404).send({ msg: '존재하는 게시글이 없습니다.' });
+
+    if (!findUser.posts.includes(postId))
+      return res.status(403).send({ msg: '해당 게시글의 수정 권한이 없습니다.' });
+
+    // 패스워드 일치 유무 확인
+    if (password !== findPost.password)
+      return res.status(403).send({ msg: '비밀번호가 일치하지 않습니다.' });
+    next();
+  } catch (err) {
+    console.error(err.name, ':', err.message);
+    return res.status(500).send({ msg: `${err.message}` });
+  }
+}
+
 module.exports = {
   getAccessToken,
   getRefreshToken,
   verifyAccessToken,
   replaceAccessToken,
+  verificationForPosts,
 };
