@@ -46,13 +46,22 @@ const getPostsByUser = async (req, res) => {
 
 // sign-up
 const signUp = async (req, res) => {
-  const { username, password } = req.body;
+  const { username, password, passwordConfirm } = req.body;
 
   try {
     const findUser = await User.findOne({ username });
 
     // 고유값에 대한 검증을 합니다.
-    if (findUser) return res.status(400).send({ msg: '해당 아이디가 이미 존재합니다.' });
+    if (findUser) return res.status(412).send({ msg: '해당 아이디가 이미 존재합니다.' });
+
+    // 패스워드와 패스워드 확인이 일치하는지 검증
+    if (password !== passwordConfirm)
+      return res.status(412).send({ msg: '패스워드와 패스워드 확인이 일치하지 않습니다.' });
+
+    // 닉네임 패턴 비밀번호 적용 유무를 검증
+    const re = new RegExp(username, 'i');
+    if (re.test(password))
+      return res.status(412).send({ msg: ' 닉네임 패턴을 비밀번호에 적용할 수 없습니다.' });
 
     // 계정 생성
     await User.create({ username, password, role: 'user' });
