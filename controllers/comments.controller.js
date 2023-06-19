@@ -14,7 +14,9 @@ const getComments = async (req, res) => {
       options: { sort: { _id: -1 }, select: '-password' }, // 코멘트 id 기준으로 내림차순 정렬
     });
 
-    if (!post) return res.send({ msg: '존재하는 댓글이 없습니다.' });
+    if (!post) return res.status(404).send({ msg: '해당 포스터가 존재하지 않습니다.' });
+    if (post.comments.length === 0)
+      return res.status(404).send({ msg: '해당 포스터의 댓글이 존재하지 않습니다.' });
     res.send({ comments: post.comments });
   } catch (err) {
     console.error(err.name, ':', err.message);
@@ -46,28 +48,6 @@ const writeComments = async (req, res) => {
     await User.updateOne(findUser, update);
     await Post.updateOne(findPost, update);
     res.json({ msg: '댓글 작성 완료' });
-  } catch (err) {
-    console.error(err.name, ':', err.message);
-    return res.status(500).send({ msg: `${err.message}` });
-  }
-};
-
-// 내 댓글 수정 클릭 -> 비밀번호 확인 사이트로 이동(href에 게시글 id 전달) -> 비밀번호 검증 -> 수정페이지에서 수정
-// 비밀번호 검증 페이지(쿼리값 필요)
-const passwordVerificationForComments = async (req, res) => {
-  const { postId, commentId } = req.params;
-  const password = req.body.password; // form태그에서 받음
-
-  try {
-    const findPost = await Post.findById(postId);
-    const findComment = await Comment.findById(commentId);
-
-    if (!findPost || !findComment) return res.send({ msg: '게시글 또는 댓글이 없습니다.' });
-
-    // 패스워드 일치 유무 확인
-    if (password !== findComment.password)
-      return res.status(403).send({ msg: '비밀번호가 일치하지 않습니다.' });
-    res.send({ msg: '비밀번호가 확인되었습니다.'}); // NOTE: 추후 삭제, 수정 기능과 연결 고려한 res 수정 필요
   } catch (err) {
     console.error(err.name, ':', err.message);
     return res.status(500).send({ msg: `${err.message}` });
@@ -127,7 +107,6 @@ const deleteComments = async (req, res) => {
 module.exports = {
   getComments,
   writeComments,
-  passwordVerificationForComments,
   editComments,
   deleteComments,
 };
