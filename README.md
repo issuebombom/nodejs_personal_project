@@ -21,19 +21,17 @@
 
 #### 포스트맨 API 체크 Flow
 
-| 경로                                                     | API Method | verify token | Description                            | Check List                                                                     |
+| 경로                                                     | API Method | verify token | Description                            | Check List                                                                |
 | -------------------------------------------------------- | ---------- | ------------ | -------------------------------------- | ------------------------------------------------------------------------- |
 | /user                                                    | POST       | false        | 회원가입                               | 가입 후 유저 조회를 통해 추가 확인, createdAt/updatedAt 체크              |
 | /user                                                    | GET        | false        | 전체유저조회                           | 스키마 디폴트값 적용 유무 체크                                            |
 | /auth/login                                              | POST       | false        | 로그인                                 | 토큰(Access, Refresh) 발행 유무 확인                                      |
 | /posts                                                   | POST       | true         | 포스트 작성(회원전용)                  | 포스트 생성 유무 체크, 유저 정보 내 포스트id 내역 추가                    |
 | /posts                                                   | GET        | false        | 전체 포스트 조회                       | 스키마 디폴트값 적용 유무 체크                                            |
-| /posts/:postId/password-verification                     | POST       | true         | 포스트 수정 전 비밀번호 체크(회원전용) | 비밀번호 일치 유무 체크                                                   |
 | /posts/:postId                                           | PUT        | true         | 포스트 수정(회원전용)                  | 포스트id 존재 유무 체크, 수정 적용 유무 체크, UpdatedAt 체크              |
 | /posts/:postId                                           | DELETE     | true         | 포스트 삭제(회원전용)                  | 삭제 적용 유무 체크, 유저 정보 내 작성한 포스트번호 내역 삭제 체크        |
 | /posts/:postId/comments                                  | POST       | true         | 포스트 내 댓글 작성(회원전용)          | 댓글 생성 유무 체크, 포스트 데이터와 유저 데이터 내 댓글id 내역 추가      |
 | /posts/:postId/comments                                  | GET        | false        | 포스트 내 댓글 조회                    | 스키마 디폴트값 적용 유무 체크                                            |
-| /posts/:postId/comments/:commentId/password-verification | POST       | true         | 댓글 수정 전 비밀번호 체크(회원전용)   | 비밀번호 일치 유무 체크                                                   |
 | /posts/:postId/comments/:commentId                       | PUT        | true         | 댓글 수정(회원전용)                    | 댓글, 포스트id 존재 유무 체크, 수정 적용 유무 체크, UpdatedAt 체크        |
 | /posts/:postId/comments/:commentId                       | DELETE     | true         | 댓글 삭제(회원전용)                    | 삭제 적용 유무 체크, 유저와 포스트 정보 내 작성한 댓글번호 내역 삭제 체크 |
 
