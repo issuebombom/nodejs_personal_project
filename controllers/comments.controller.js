@@ -10,7 +10,7 @@ const getComments = async (req, res) => {
   try {
     const post = await Post.findById(postId).populate({
       path: 'comments',
-      populate: { path: 'user', model: 'User', select: '-password -refreshToken' }, // 유저 패스워드 노출에 대한 조치 필요
+      populate: { path: 'user', model: 'User', select: '-password -refreshToken -createdAt -updatedAt' }, // 유저 패스워드 노출에 대한 조치 필요
       options: { sort: { _id: -1 }, select: '-password' }, // 코멘트 id 기준으로 내림차순 정렬
     });
 

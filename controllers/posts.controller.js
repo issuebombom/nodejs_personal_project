@@ -8,7 +8,7 @@ const getPosts = async (req, res) => {
       .select('-password')
       .populate({
         path: 'user',
-        select: '-password -refreshToken',
+        select: '-password -refreshToken -createdAt -updatedAt',
       })
       .sort({ _id: -1 });
 
