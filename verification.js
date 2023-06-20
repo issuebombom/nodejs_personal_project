@@ -7,7 +7,7 @@ const Comment = require('./schemas/comment');
 const getAccessToken = ((username, _id) => {
   const accessToken = (username, _id) =>
     jwt.sign({ username, _id }, process.env.ACCESS_TOKEN_KEY, {
-      expiresIn: '30m',
+      expiresIn: '10s',
     });
   return (username, _id) => accessToken(username, _id);
 })();
@@ -23,19 +23,23 @@ const getRefreshToken = ((username, _id) => {
 
 // 엑세스 토큰 검증을 위한 미들웨어
 function verifyAccessToken(req, res, next) {
-  // auth에서 access token을 획득합니다.
-  const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer 제거
-  if (!token) return res.status(401).send({ msg: '엑세스 토큰을 입력해 주세요.' }); // 토큰이 없다면 종료
+  // 쿠키에서 access token을 획득합니다.
+  const cookies = req.cookies;
+
+  // 쿠키가 없는 경우
+  if (!cookies?.issuebombomCookie)
+    return res.status(403).send({ msg: '엑세스 토큰 검증을 위한 쿠키 없음 (재 로그인 필요)' });
 
   // access token 검증
-  jwt.verify(token, process.env.ACCESS_TOKEN_KEY, (err, user) => {
-    // access token이 만료된 경우 재생성하기
+  const accessToken = cookies.issuebombomCookie;
+  jwt.verify(accessToken, process.env.ACCESS_TOKEN_KEY, (err) => {
+    // access token이 만료된 경우 다음 미들웨어에 expired 전달
     if (err) {
       req.expired = true;
       console.error(err.name, ':', err.message);
     }
-    req.user = user;
+    // req.user = user; // 토큰이 만료될 경우 user는 undefined가 된다.
+    req.user = jwt.decode(accessToken); // 페이로드 전달
     next();
   });
 }
@@ -44,32 +48,27 @@ function verifyAccessToken(req, res, next) {
 async function replaceAccessToken(req, res, next) {
   if (req.expired) {
     try {
-      const cookies = req.cookies;
-      // 쿠키가 없는 경우
-      if (!cookies?.issuebombomCookie)
-        return res.status(403).send({ msg: '엑세스 토큰 재발급을 위한 쿠키 없음' });
+      // DB에 저장된 리프레시 토큰 확인
+      const findUser = await User.findById({ _id: req.user._id });
 
-      // 쿠키가 있으면
-      const refreshToken = cookies.issuebombomCookie;
-      // DB에 저장된 쿠키가 있는지 확인
-      const user = await User.findOne({ refreshToken });
-      if (!user) return res.status(403).send({ msg: '해당 쿠키에는 등록된 리프레시 토큰이 없음' });
-      // 쿠키 검증
-      jwt.verify(refreshToken, process.env.REFRESH_TOKEN_KEY, (err, user) => {
+      // 토큰 검증
+      const refreshToken = findUser.refreshToken;
+      jwt.verify(refreshToken, process.env.REFRESH_TOKEN_KEY, (err) => {
         // refresh token이 만료된 경우 재로그인 안내
         if (err) return res.status(403).send({ msg: '리프레시 토큰이 만료됨 (재 로그인 필요)' });
-
-        // 신규 토큰 생성 및 재발급
-        res.setHeader('Authorization', `Bearer ${getAccessToken(user.username, user._id)}`);
-        res.status(200).send({ msg: '엑세스 토큰이 만료되어 재발급' });
       });
+      // 토큰 재발급 및 쿠키로 보냄
+      res.cookie('issuebombomCookie', getAccessToken(findUser.username, findUser._id), {
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000, // 24시간
+      });
+      console.log('엑세스 토큰 만료로 재발급 진행');
     } catch (err) {
       console.error(err.name, ':', err.message);
       return res.status(500).send({ msg: `${err.message}` });
     }
-  } else {
-    next();
   }
+  next();
 }
 
 // 게시글 수정 권한 검증을 위한 미들웨어
